@@ -32,10 +32,14 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-box">
         <Card>
-          <p className="muted" style={{ letterSpacing: '.3em', textTransform: 'uppercase' }}>
-            DreylisSoft Central
-          </p>
-          <h1 style={{ fontSize: 38, marginTop: 8 }}>Acceso seguro</h1>
+          <div className="login-logo">
+            <img
+              src="/assets/logo-dreylissoft.png"
+              alt="DreylisSoft - Soluciones que conectan tu negocio"
+            />
+          </div>
+          <p className="muted login-eyebrow">DreylisSoft Central</p>
+          <h1 className="login-title">Acceso seguro</h1>
           <form onSubmit={submit} className="grid" style={{ marginTop: 26 }}>
             <Field label="Usuario o correo">
               <Input value={identity} onChange={(e: any) => setIdentity(e.target.value)} />

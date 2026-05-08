@@ -15,8 +15,12 @@ export function Layout() {
     <div className="layout">
       <aside className="sidebar">
         <div className="brand">
-          <small>DREYLISSOFT</small>
-          <h1>Central ERP</h1>
+          <img
+            src="/assets/logo-dreylissoft.png"
+            alt="DreylisSoft - Soluciones que conectan tu negocio"
+            className="brand-logo"
+          />
+          <div className="brand-caption">Central ERP</div>
         </div>
         <nav className="nav">
           {items

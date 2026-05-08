@@ -1,7 +1,11 @@
 :root {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #0f172a;
-  background: #edf2f7;
+  color: #0B1F3A;
+  background: #F4F7FB;
+  --color-primary-dark: #0B1F3A;
+  --color-primary-blue: #21D4FD;
+  --color-accent-green: #2EE6A6;
+  --color-light-bg: #F4F7FB;
 }
 
 * { box-sizing: border-box; }
@@ -13,21 +17,34 @@ button { cursor: pointer; }
   min-height: 100vh;
   display: grid;
   grid-template-columns: 280px 1fr;
-  background: #edf2f7;
+  background: #F4F7FB;
 }
 .sidebar {
-  background: #050b1d;
+  background: radial-gradient(circle at top left, rgba(33,212,253,.18), transparent 34%), #050b1d;
   color: white;
   min-height: 100vh;
   position: sticky;
   top: 0;
 }
 .brand {
-  padding: 24px;
+  padding: 22px 20px 24px;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.brand small { letter-spacing: .35em; color: #94a3b8; }
-.brand h1 { margin: 8px 0 0; font-size: 22px; }
+.brand-logo {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+.brand-caption {
+  margin-top: 10px;
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
 .nav { padding: 16px; display: grid; gap: 8px; }
 .nav a {
   color: #dbeafe;
@@ -35,7 +52,7 @@ button { cursor: pointer; }
   padding: 12px 14px;
   border-radius: 10px;
 }
-.nav a.active, .nav a:hover { background: #1e293b; color: white; }
+.nav a.active, .nav a:hover { background: linear-gradient(135deg, rgba(33,212,253,.22), rgba(46,230,166,.16)); color: white; }
 .topbar {
   height: 88px;
   background: white;
@@ -77,9 +94,11 @@ button { cursor: pointer; }
   border-radius: 10px;
   padding: 12px 18px;
   font-weight: 800;
-  background: #020617;
-  color: white;
+  background: linear-gradient(135deg, #21D4FD, #2EE6A6);
+  color: #0B1F3A;
+  box-shadow: 0 10px 22px rgba(33, 212, 253, .22);
 }
+.btn:hover { opacity: .94; }
 .btn.secondary { background: white; color: #0f172a; border: 1px solid #cbd5e1; }
 .btn.success { background: #059669; }
 .btn.danger { background: #dc2626; }
@@ -92,12 +111,49 @@ td { padding: 13px 12px; border-bottom: 1px solid #e2e8f0; }
 .badge.ok { background: #dcfce7; color: #15803d; }
 .badge.off { background: #fee2e2; color: #b91c1c; }
 .muted { color: #64748b; }
-.login-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 15% 18%, rgba(33,212,253,.18), transparent 26%),
+    radial-gradient(circle at 84% 14%, rgba(46,230,166,.15), transparent 25%),
+    linear-gradient(135deg, #F4F7FB 0%, #ffffff 100%);
+}
 .login-box { width: 100%; max-width: 500px; }
+.login-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+.login-logo img {
+  width: 290px;
+  max-width: 86%;
+  height: auto;
+  object-fit: contain;
+}
+.login-eyebrow {
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.login-title {
+  font-size: 38px;
+  margin: 8px 0 0;
+  text-align: center;
+}
 .metric { border-left: 5px solid #2563eb; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { position: relative; min-height: auto; }
+  .brand { padding: 16px 20px; }
+  .brand-logo { max-width: 180px; }
+  .brand-caption { font-size: 11px; }
   .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .login-logo img { width: 235px; }
+  .login-title { font-size: 32px; }
 }
