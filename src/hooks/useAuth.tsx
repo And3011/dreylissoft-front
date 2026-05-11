@@ -9,9 +9,10 @@ export type Company = {
   email?: string | null;
   phone?: string | null;
   business_type: string | null;
-  logo_url: string | null;
-  is_default: number;
+  logo_url?: string | null;
+  is_default?: number;
   user_company_active?: number;
+  active?: number;
 };
 
 type AuthContextValue = {
@@ -35,6 +36,15 @@ function readJson<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function resolveDefaultCompany(user: any, companies: Company[]) {
+  return (
+    companies.find((company) => Number(company.is_default) === 1) ||
+    companies.find((company) => Number(company.id) === Number(user?.companyId)) ||
+    companies[0] ||
+    null
+  );
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -66,24 +76,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadMyCompanies = async () => {
     const response = await api.get('/me/companies');
-    const rows = response.data.data as Company[];
+    const rows = (response.data.data || []) as Company[];
 
-    const ordered = rows || [];
-    const defaultCompany =
-      ordered.find((company) => Number(company.is_default) === 1) ||
-      ordered[0] ||
-      null;
+    const defaultCompany = resolveDefaultCompany(user, rows);
 
-    localStorage.setItem('dreylissoft_companies', JSON.stringify(ordered));
-    setCompanies(ordered);
+    localStorage.setItem('dreylissoft_companies', JSON.stringify(rows));
+    setCompanies(rows);
+    setActiveCompany(defaultCompany);
 
-    if (defaultCompany) {
-      setActiveCompany(defaultCompany);
-    } else {
-      setActiveCompany(null);
-    }
-
-    return ordered;
+    return rows;
   };
 
   const value = useMemo<AuthContextValue>(
@@ -94,11 +95,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activeCompany,
 
       setSession: (newToken, newUser) => {
+        const userCompanies = (newUser?.companies || []) as Company[];
+        const defaultCompany = resolveDefaultCompany(newUser, userCompanies);
+
         localStorage.setItem('dreylissoft_token', newToken);
         localStorage.setItem('dreylissoft_user', JSON.stringify(newUser));
+        localStorage.setItem('dreylissoft_companies', JSON.stringify(userCompanies));
+
+        if (defaultCompany) {
+          localStorage.setItem(
+            'dreylissoft_active_company',
+            JSON.stringify(defaultCompany)
+          );
+        } else {
+          localStorage.removeItem('dreylissoft_active_company');
+        }
 
         setToken(newToken);
         setUser(newUser);
+        setCompanies(userCompanies);
+        setActiveCompanyState(defaultCompany);
       },
 
       logout: () => {
