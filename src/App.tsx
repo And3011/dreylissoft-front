@@ -5,6 +5,7 @@ import { LoginPage } from './modules/LoginPage';
 import { DashboardPage } from './modules/DashboardPage';
 import { CompaniesPage } from './modules/CompaniesPage';
 import { ServicesPage } from './modules/ServicesPage';
+import { SolicitudesPage } from './modules/SolicitudesPage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { token } = useAuth();
@@ -21,6 +22,7 @@ export function App() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="companies" element={<CompaniesPage />} />
         <Route path="services" element={<ServicesPage />} />
+        <Route path="/solicitudes" element={<SolicitudesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
