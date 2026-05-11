@@ -17,7 +17,7 @@ function LogoutIcon() {
 const items: Array<{ to: string; label: string; permission: string; Icon: () => JSX.Element }> = [
   { to: '/dashboard', label: 'Dashboard', permission: 'dashboard.view', Icon: HomeIcon },
   { to: '/companies', label: 'Empresas', permission: 'companies.view', Icon: BuildingIcon },
-  { to: '/services', label: 'Servicios', permission: 'services.view', Icon: LayersIcon }
+  { to: '/services', label: 'Servicios', permission: 'services.view', Icon: LayersIcon },
   { to: '/solicitudes', label: 'Solicitudes', permission: 'solicitudes.view', Icon: LayersIcon }
 ];
 
