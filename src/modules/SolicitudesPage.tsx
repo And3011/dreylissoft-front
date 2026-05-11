@@ -16,6 +16,10 @@ type Solicitud = {
   urgencia: string | null;
   descripcion: string;
   estado: string;
+  comentario_interno: string | null;
+  gestionado_por: number | null;
+  fecha_contacto: string | null;
+  fecha_cierre: string | null;
   fecha_creacion: string;
   fecha_actualizacion?: string | null;
 };
@@ -25,7 +29,8 @@ const estados = [
   { value: 'PENDIENTE', label: 'Pendiente' },
   { value: 'EN_PROCESO', label: 'En proceso' },
   { value: 'CONTACTADO', label: 'Contactado' },
-  { value: 'CERRADO', label: 'Cerrado' }
+  { value: 'CERRADO', label: 'Cerrado' },
+  { value: 'DESCARTADO', label: 'Descartado' }
 ];
 
 function estadoLabel(value: string) {
@@ -48,6 +53,8 @@ export function SolicitudesPage() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Solicitud | null>(null);
   const [msg, setMsg] = useState('');
+  const [gestionEstado, setGestionEstado] = useState('EN_PROCESO');
+  const [comentarioInterno, setComentarioInterno] = useState('');
 
   const solicitudesQuery = useQuery({
     queryKey: ['solicitudes', estado, search],
@@ -77,6 +84,37 @@ export function SolicitudesPage() {
     }
   });
 
+  const saveGestion = useMutation({
+    mutationFn: async ({
+      id,
+      estado,
+      comentario_interno
+    }: {
+      id: number;
+      estado: string;
+      comentario_interno: string;
+    }) => {
+      return api.patch(`/solicitudes/${id}/gestion`, {
+        estado,
+        comentario_interno
+      });
+    },
+    onSuccess: () => {
+      setMsg('Gestión guardada correctamente');
+      qc.invalidateQueries({ queryKey: ['solicitudes'] });
+      setSelected(null);
+    },
+    onError: (error) => {
+      setMsg(getErrorMessage(error));
+    }
+  });
+
+  const openDetail = (item: Solicitud) => {
+    setSelected(item);
+    setGestionEstado(item.estado || 'EN_PROCESO');
+    setComentarioInterno(item.comentario_interno || '');
+  };
+
   const solicitudes = solicitudesQuery.data || [];
 
   const resumen = useMemo(() => {
@@ -85,7 +123,8 @@ export function SolicitudesPage() {
       pendientes: solicitudes.filter((item) => item.estado === 'PENDIENTE').length,
       proceso: solicitudes.filter((item) => item.estado === 'EN_PROCESO').length,
       contactadas: solicitudes.filter((item) => item.estado === 'CONTACTADO').length,
-      cerradas: solicitudes.filter((item) => item.estado === 'CERRADO').length
+      cerradas: solicitudes.filter((item) => item.estado === 'CERRADO').length,
+      descartadas: solicitudes.filter((item) => item.estado === 'DESCARTADO').length
     };
   }, [solicitudes]);
 
@@ -217,7 +256,7 @@ export function SolicitudesPage() {
 
                   <td>
                     <div className="actions">
-                      <button className="btn secondary" onClick={() => setSelected(item)}>
+                      <button className="btn secondary" onClick={() => openDetail(item)}>
                         Ver detalle
                       </button>
 
@@ -305,7 +344,7 @@ export function SolicitudesPage() {
               </div>
 
               <div>
-                <span>Estado</span>
+                <span>Estado actual</span>
                 <strong>{estadoLabel(selected.estado)}</strong>
               </div>
             </div>
@@ -315,7 +354,64 @@ export function SolicitudesPage() {
               <p>{selected.descripcion}</p>
             </div>
 
+            <div className="description-box">
+              <span>Gestión interna</span>
+
+              <div className="grid" style={{ gap: 14 }}>
+                <Field label="Estado de gestión">
+                  <Select
+                    value={gestionEstado}
+                    onChange={(e: any) => setGestionEstado(e.target.value)}
+                  >
+                    {estados
+                      .filter((item) => item.value !== 'TODAS')
+                      .map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+
+                <Field label="Comentario interno">
+                  <textarea
+                    className="input textarea-input"
+                    value={comentarioInterno}
+                    onChange={(e: any) => setComentarioInterno(e.target.value)}
+                    placeholder="Ejemplo: cliente interesado en POS para minimarket, llamar mañana..."
+                    rows={5}
+                  />
+                </Field>
+
+                <div className="detail-grid">
+                  <div>
+                    <span>Fecha contacto</span>
+                    <strong>{formatDate(selected.fecha_contacto)}</strong>
+                  </div>
+
+                  <div>
+                    <span>Fecha cierre</span>
+                    <strong>{formatDate(selected.fecha_cierre)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="actions" style={{ marginTop: 18 }}>
+              <button
+                className="btn"
+                onClick={() =>
+                  saveGestion.mutate({
+                    id: selected.id,
+                    estado: gestionEstado,
+                    comentario_interno: comentarioInterno
+                  })
+                }
+                disabled={saveGestion.isPending}
+              >
+                {saveGestion.isPending ? 'Guardando...' : 'Guardar gestión'}
+              </button>
+
               <a
                 className="btn success"
                 href={`https://wa.me/${selected.telefono.replace(/\D/g, '')}`}
