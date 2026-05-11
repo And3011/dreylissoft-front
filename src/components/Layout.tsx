@@ -1,15 +1,19 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 function HomeIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" /></svg>;
 }
+
 function BuildingIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7l8-4v18" /><path d="M19 21V11l-6-4" /><path d="M9 9h.01" /><path d="M9 13h.01" /><path d="M9 17h.01" /><path d="M13 13h.01" /><path d="M13 17h.01" /></svg>;
 }
+
 function LayersIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m12 2 10 5-10 5L2 7l10-5Z" /><path d="m2 12 10 5 10-5" /><path d="m2 17 10 5 10-5" /></svg>;
 }
+
 function LogoutIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>;
 }
@@ -22,8 +26,25 @@ const items: Array<{ to: string; label: string; permission: string; Icon: () => 
 ];
 
 export function Layout() {
-  const { user, logout, hasPermission } = useAuth();
+  const {
+    user,
+    logout,
+    hasPermission,
+    companies,
+    activeCompany,
+    setActiveCompany,
+    loadMyCompanies
+  } = useAuth();
+
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!companies.length) {
+      loadMyCompanies().catch(() => {
+        // No bloqueamos el layout si no carga empresas.
+      });
+    }
+  }, []);
 
   return (
     <div className="layout">
@@ -50,7 +71,9 @@ export function Layout() {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-user-avatar">{(user?.fullName || user?.username || 'A').slice(0, 1).toUpperCase()}</div>
+          <div className="sidebar-user-avatar">
+            {(user?.fullName || user?.username || 'A').slice(0, 1).toUpperCase()}
+          </div>
           <div className="sidebar-user-copy">
             <strong>{user?.fullName || user?.username}</strong>
             <span>{user?.roleName || 'Usuario'}</span>
@@ -65,17 +88,44 @@ export function Layout() {
             <strong>{user?.fullName || user?.username}</strong>
             <div className="muted">{user?.roleName}</div>
           </div>
-          <button
-            className="btn topbar-logout"
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
-          >
-            <span className="btn-inline-icon"><LogoutIcon /></span>
-            Cerrar sesión
-          </button>
+
+          <div className="topbar-actions">
+            <div className="company-switcher">
+              <span>Empresa activa</span>
+
+              <select
+                value={activeCompany?.id || ''}
+                onChange={(event) => {
+                  const company = companies.find(
+                    (item) => Number(item.id) === Number(event.target.value)
+                  );
+
+                  setActiveCompany(company || null);
+                }}
+              >
+                {!activeCompany ? <option value="">Seleccione empresa</option> : null}
+
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.commercial_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              className="btn topbar-logout"
+              onClick={() => {
+                logout();
+                navigate('/login');
+              }}
+            >
+              <span className="btn-inline-icon"><LogoutIcon /></span>
+              Cerrar sesión
+            </button>
+          </div>
         </header>
+
         <section className="content">
           <Outlet />
         </section>

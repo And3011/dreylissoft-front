@@ -503,3 +503,61 @@ td { padding: 13px 12px; border-bottom: 1px solid #e2e8f0; }
 .description-box textarea {
   font: inherit;
 }
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.company-switcher {
+  display: grid;
+  gap: 5px;
+  min-width: 240px;
+}
+
+.company-switcher span {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.company-switcher select {
+  height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0 12px;
+  background: #ffffff;
+  color: #0f172a;
+  outline: none;
+  font-weight: 700;
+}
+
+.company-switcher select:focus {
+  border-color: #21d4fd;
+  box-shadow: 0 0 0 4px rgba(33, 212, 253, 0.12);
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    height: auto;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    align-items: flex-start;
+    gap: 16px;
+    flex-direction: column;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .company-switcher {
+    min-width: 0;
+    width: 100%;
+  }
+}
