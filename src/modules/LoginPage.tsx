@@ -45,7 +45,7 @@ function EyeIcon({ open }: { open: boolean }) {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { setSession } = useAuth();
+  const { setSession, loadMyCompanies } = useAuth();
   const [identity, setIdentity] = useState('admin');
   const [password, setPassword] = useState('Admin123*');
   const [remember, setRemember] = useState(true);
@@ -60,6 +60,7 @@ export function LoginPage() {
       setError('');
       const response = await api.post('/auth/login', { identity, password, remember });
       setSession(response.data.data.token, response.data.data.user);
+      await loadMyCompanies();
       navigate('/dashboard');
     } catch (err) {
       setError(getErrorMessage(err));
