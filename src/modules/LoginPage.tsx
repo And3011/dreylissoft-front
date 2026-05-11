@@ -23,6 +23,19 @@ function LockIcon() {
   );
 }
 
+function CompanyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 21h18" />
+      <path d="M5 21V7l7-4 7 4v14" />
+      <path d="M9 10h.01" />
+      <path d="M9 14h.01" />
+      <path d="M15 10h.01" />
+      <path d="M15 14h.01" />
+    </svg>
+  );
+}
+
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {
     return (
@@ -46,6 +59,8 @@ function EyeIcon({ open }: { open: boolean }) {
 export function LoginPage() {
   const navigate = useNavigate();
   const { setSession } = useAuth();
+
+  const [companyCode, setCompanyCode] = useState('');
   const [identity, setIdentity] = useState('admin');
   const [password, setPassword] = useState('Admin123*');
   const [remember, setRemember] = useState(true);
@@ -55,11 +70,26 @@ export function LoginPage() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+
     try {
       setLoading(true);
       setError('');
-      const response = await api.post('/auth/login', { identity, password, remember });
-      setSession(response.data.data.token, response.data.data.user);
+
+      const response = await api.post('/auth/login', {
+        companyCode: companyCode.trim() || null,
+        identity,
+        password,
+        remember
+      });
+
+      const data = response.data.data;
+
+      if (data.action === 'REDIRECT_SERVICE') {
+        window.location.href = data.redirectUrl;
+        return;
+      }
+
+      setSession(data.token, data.user);
       navigate('/dashboard');
     } catch (err) {
       setError(getErrorMessage(err));
@@ -85,12 +115,30 @@ export function LoginPage() {
 
           <div className="login-copy">
             <h1>Bienvenido de nuevo</h1>
-            <p>Inicia sesión para continuar con tu gestión empresarial.</p>
+            <p>
+              Accede al backoffice de DreylisSoft o ingresa el código de tu compañía para abrir tu servicio contratado.
+            </p>
           </div>
 
           <form onSubmit={submit} className="grid" style={{ marginTop: 8 }}>
             <div className="field">
-              <label>Correo electrónico</label>
+              <label>Código compañía</label>
+              <div className="input-wrap">
+                <span className="input-icon"><CompanyIcon /></span>
+                <Input
+                  value={companyCode}
+                  onChange={(e: any) => setCompanyCode(e.target.value.toUpperCase())}
+                  placeholder="Ejemplo: FARMA001"
+                  className="with-icon"
+                />
+              </div>
+              <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                Déjalo vacío si eres administrador de DreylisSoft.
+              </p>
+            </div>
+
+            <div className="field">
+              <label>Usuario o correo</label>
               <div className="input-wrap">
                 <span className="input-icon"><MailIcon /></span>
                 <Input
@@ -113,7 +161,12 @@ export function LoginPage() {
                   placeholder="••••••••••"
                   className="with-icon with-action"
                 />
-                <button type="button" className="input-action" onClick={() => setShowPassword((v) => !v)} aria-label="Mostrar u ocultar contraseña">
+                <button
+                  type="button"
+                  className="input-action"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label="Mostrar u ocultar contraseña"
+                >
                   <EyeIcon open={showPassword} />
                 </button>
               </div>
@@ -121,16 +174,26 @@ export function LoginPage() {
 
             <div className="login-meta-row">
               <label className="remember-check">
-                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
                 <span>Recordarme</span>
               </label>
-              <button type="button" className="text-link">¿Olvidaste tu contraseña?</button>
+              <button type="button" className="text-link">
+                ¿Olvidaste tu contraseña?
+              </button>
             </div>
 
-            {error ? <div className="badge off" style={{ borderRadius: 12 }}>{error}</div> : null}
+            {error ? (
+              <div className="badge off" style={{ borderRadius: 12 }}>
+                {error}
+              </div>
+            ) : null}
 
             <button className="btn login-btn" disabled={loading}>
-              <span>{loading ? 'Entrando...' : 'Iniciar sesión'}</span>
+              <span>{loading ? 'Validando...' : 'Continuar'}</span>
               <span aria-hidden="true">→</span>
             </button>
           </form>
