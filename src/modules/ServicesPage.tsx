@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { Card, Field, Input, PageHeader, Select } from '../components/common';
@@ -28,6 +28,15 @@ export function ServicesPage() {
     status: 'ACTIVE'
   });
 
+  const [accessForm, setAccessForm] = useState({
+    companyId: '',
+    companyServiceId: '',
+    username: '',
+    password: '',
+    fullName: '',
+    active: 1
+  });
+
   const servicesQuery = useQuery({
     queryKey: ['services'],
     queryFn: async () => (await api.get('/services')).data.data
@@ -38,11 +47,23 @@ export function ServicesPage() {
     queryFn: async () => (await api.get('/companies')).data.data
   });
 
+  const selectedCompanyServicesQuery = useQuery({
+    queryKey: ['company-services-form', accessForm.companyId],
+    enabled: Boolean(accessForm.companyId),
+    queryFn: async () =>
+      (await api.get(`/companies/${accessForm.companyId}/services`)).data.data
+  });
+
   const companyServicesQuery = useQuery({
     queryKey: ['company-services', activeCompany?.id],
     enabled: Boolean(activeCompany?.id),
     queryFn: async () =>
       (await api.get(`/companies/${activeCompany?.id}/services`)).data.data
+  });
+
+  const serviceAccessUsersQuery = useQuery({
+    queryKey: ['service-access-users'],
+    queryFn: async () => (await api.get('/service-access-users')).data.data
   });
 
   const createService = useMutation({
@@ -81,20 +102,54 @@ export function ServicesPage() {
         status: 'ACTIVE'
       });
       qc.invalidateQueries({ queryKey: ['company-services'] });
+      qc.invalidateQueries({ queryKey: ['company-services-form'] });
       qc.invalidateQueries({ queryKey: ['companies'] });
     },
     onError: (e) => setMsg(getErrorMessage(e))
   });
 
-  const openService = useMutation({
-    mutationFn: async (companyServiceId: number) => {
-      const response = await api.post(
-        `/service-open/company-services/${companyServiceId}/open`
-      );
-      return response.data.data;
+  const createAccessUser = useMutation({
+    mutationFn: async () =>
+      api.post('/service-access-users', {
+        companyId: Number(accessForm.companyId),
+        companyServiceId: Number(accessForm.companyServiceId),
+        username: accessForm.username,
+        password: accessForm.password,
+        fullName: accessForm.fullName,
+        active: Number(accessForm.active)
+      }),
+    onSuccess: () => {
+      setMsg('Usuario maestro creado correctamente');
+      setAccessForm({
+        companyId: '',
+        companyServiceId: '',
+        username: '',
+        password: '',
+        fullName: '',
+        active: 1
+      });
+      qc.invalidateQueries({ queryKey: ['service-access-users'] });
     },
-    onSuccess: (data) => {
-      window.location.href = data.redirectUrl;
+    onError: (e) => setMsg(getErrorMessage(e))
+  });
+
+  const toggleAccessUser = useMutation({
+    mutationFn: async (row: any) =>
+      api.patch(`/service-access-users/${row.id}`, {
+        active: Number(row.active) === 1 ? 0 : 1
+      }),
+    onSuccess: () => {
+      setMsg('Usuario maestro actualizado correctamente');
+      qc.invalidateQueries({ queryKey: ['service-access-users'] });
+    },
+    onError: (e) => setMsg(getErrorMessage(e))
+  });
+
+  const resetAccessPassword = useMutation({
+    mutationFn: async ({ id, password }: { id: number; password: string }) =>
+      api.patch(`/service-access-users/${id}/reset-password`, { password }),
+    onSuccess: () => {
+      setMsg('Contraseña actualizada correctamente');
     },
     onError: (e) => setMsg(getErrorMessage(e))
   });
@@ -102,12 +157,18 @@ export function ServicesPage() {
   const services = servicesQuery.data || [];
   const companies = companiesQuery.data || [];
   const companyServices = companyServicesQuery.data || [];
+  const selectedCompanyServices = selectedCompanyServicesQuery.data || [];
+  const serviceAccessUsers = serviceAccessUsersQuery.data || [];
+
+  const selectedCompany = useMemo(() => {
+    return companies.find((item: any) => Number(item.id) === Number(accessForm.companyId));
+  }, [companies, accessForm.companyId]);
 
   return (
     <div className="stack">
       <PageHeader
         title="Servicios"
-        subtitle="Productos contratables y apertura de subsistemas"
+        subtitle="Productos contratables, contratos por empresa y usuarios maestro de acceso"
       />
 
       <Card title="Crear servicio">
@@ -121,7 +182,7 @@ export function ServicesPage() {
                   code: e.target.value.toUpperCase()
                 })
               }
-              placeholder="MINIMARKET_POS"
+              placeholder="FARMACIA"
             />
           </Field>
 
@@ -131,7 +192,7 @@ export function ServicesPage() {
               onChange={(e: any) =>
                 setServiceForm({ ...serviceForm, name: e.target.value })
               }
-              placeholder="POS Minimarket"
+              placeholder="Sistema Farmacia"
             />
           </Field>
 
@@ -159,7 +220,7 @@ export function ServicesPage() {
                   frontendUrl: e.target.value
                 })
               }
-              placeholder="http://localhost:5173"
+              placeholder="https://farmacia-production-66d7.up.railway.app"
             />
           </Field>
 
@@ -169,7 +230,7 @@ export function ServicesPage() {
               onChange={(e: any) =>
                 setServiceForm({ ...serviceForm, apiUrl: e.target.value })
               }
-              placeholder="http://localhost:4000/api"
+              placeholder="https://farmacia-production-66d7.up.railway.app/api"
             />
           </Field>
 
@@ -268,6 +329,210 @@ export function ServicesPage() {
         </div>
       </Card>
 
+      <Card title="Crear usuario maestro de acceso">
+        <p className="muted" style={{ marginTop: 0 }}>
+          Este usuario valida el código de compañía y redirige al login del servicio contratado.
+          No entra al backoffice DreylisSoft ni reemplaza los usuarios internos del sistema destino.
+        </p>
+
+        <div className="grid grid-3">
+          <Field label="Empresa">
+            <Select
+              value={accessForm.companyId}
+              onChange={(e: any) =>
+                setAccessForm({
+                  ...accessForm,
+                  companyId: e.target.value,
+                  companyServiceId: ''
+                })
+              }
+            >
+              <option value="">Seleccione</option>
+              {companies.map((c: any) => (
+                <option key={c.id} value={c.id}>
+                  {c.commercial_name}
+                  {c.company_code ? ` (${c.company_code})` : ''}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Servicio contratado">
+            <Select
+              value={accessForm.companyServiceId}
+              onChange={(e: any) =>
+                setAccessForm({
+                  ...accessForm,
+                  companyServiceId: e.target.value
+                })
+              }
+              disabled={!accessForm.companyId || selectedCompanyServicesQuery.isLoading}
+            >
+              <option value="">
+                {accessForm.companyId ? 'Seleccione' : 'Seleccione empresa primero'}
+              </option>
+
+              {selectedCompanyServices.map((cs: any) => (
+                <option
+                  key={cs.company_service_id || cs.id}
+                  value={cs.company_service_id || cs.id}
+                >
+                  {cs.service_name || cs.name} - {cs.status}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Estado">
+            <Select
+              value={accessForm.active}
+              onChange={(e: any) =>
+                setAccessForm({ ...accessForm, active: Number(e.target.value) })
+              }
+            >
+              <option value={1}>Activo</option>
+              <option value={0}>Inactivo</option>
+            </Select>
+          </Field>
+
+          <Field label="Usuario maestro">
+            <Input
+              value={accessForm.username}
+              onChange={(e: any) =>
+                setAccessForm({ ...accessForm, username: e.target.value })
+              }
+              placeholder="admin"
+            />
+          </Field>
+
+          <Field label="Nombre completo">
+            <Input
+              value={accessForm.fullName}
+              onChange={(e: any) =>
+                setAccessForm({ ...accessForm, fullName: e.target.value })
+              }
+              placeholder={`Administrador ${selectedCompany?.commercial_name || ''}`.trim()}
+            />
+          </Field>
+
+          <Field label="Contraseña temporal">
+            <Input
+              type="password"
+              value={accessForm.password}
+              onChange={(e: any) =>
+                setAccessForm({ ...accessForm, password: e.target.value })
+              }
+              placeholder="Admin123*"
+            />
+          </Field>
+        </div>
+
+        <div className="actions" style={{ marginTop: 16 }}>
+          <button
+            className="btn"
+            onClick={() => createAccessUser.mutate()}
+            disabled={createAccessUser.isPending}
+          >
+            {createAccessUser.isPending ? 'Creando...' : 'Crear usuario maestro'}
+          </button>
+        </div>
+      </Card>
+
+      <Card title="Usuarios maestro de servicios">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Empresa</th>
+                <th>Servicio</th>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {serviceAccessUsers.map((row: any) => (
+                <tr key={row.id}>
+                  <td>{row.id}</td>
+
+                  <td>
+                    <strong>{row.commercial_name}</strong>
+                    <div className="muted">{row.company_code || '-'}</div>
+                  </td>
+
+                  <td>
+                    {row.service_name}
+                    <div className="muted">{row.service_code}</div>
+                  </td>
+
+                  <td>{row.username}</td>
+
+                  <td>{row.full_name}</td>
+
+                  <td>
+                    <span
+                      className={`badge ${Number(row.active) === 1 ? 'ok' : 'off'}`}
+                    >
+                      {Number(row.active) === 1 ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+
+                  <td>
+                    <div className="actions">
+                      <button
+                        className="btn secondary"
+                        onClick={() => {
+                          const password = window.prompt(
+                            `Nueva contraseña para ${row.username}`
+                          );
+
+                          if (!password) return;
+
+                          resetAccessPassword.mutate({
+                            id: row.id,
+                            password
+                          });
+                        }}
+                        disabled={resetAccessPassword.isPending}
+                      >
+                        Reset clave
+                      </button>
+
+                      <button
+                        className="btn danger"
+                        onClick={() => toggleAccessUser.mutate(row)}
+                        disabled={toggleAccessUser.isPending}
+                      >
+                        {Number(row.active) === 1 ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {!serviceAccessUsersQuery.isLoading && !serviceAccessUsers.length ? (
+                <tr>
+                  <td colSpan={7} className="muted">
+                    No hay usuarios maestro registrados.
+                  </td>
+                </tr>
+              ) : null}
+
+              {serviceAccessUsersQuery.isLoading ? (
+                <tr>
+                  <td colSpan={7} className="muted">
+                    Cargando usuarios maestro...
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
       {!activeCompany ? (
         <Card title="Seleccione una empresa">
           <p className="muted">
@@ -286,7 +551,7 @@ export function ServicesPage() {
                   <th>Plan</th>
                   <th>Mensualidad</th>
                   <th>Estado</th>
-                  <th>Acciones</th>
+                  <th>URL</th>
                 </tr>
               </thead>
 
@@ -321,15 +586,7 @@ export function ServicesPage() {
                     </td>
 
                     <td>
-                      <button
-                        className="btn"
-                        onClick={() =>
-                          openService.mutate(row.company_service_id || row.id)
-                        }
-                        disabled={openService.isPending}
-                      >
-                        Abrir
-                      </button>
+                      <span className="muted">{row.frontend_url || '-'}</span>
                     </td>
                   </tr>
                 ))}
