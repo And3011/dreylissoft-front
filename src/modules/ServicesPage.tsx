@@ -10,15 +10,18 @@ export function ServicesPage() {
   const { activeCompany } = useAuth();
 
   const [msg, setMsg] = useState('');
+  const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
 
-  const [serviceForm, setServiceForm] = useState({
+  const emptyServiceForm = {
     code: '',
     name: '',
     description: '',
     frontendUrl: '',
     apiUrl: '',
     active: 1
-  });
+  };
+
+  const [serviceForm, setServiceForm] = useState(emptyServiceForm);
 
   const [assignForm, setAssignForm] = useState({
     companyId: '',
@@ -66,20 +69,28 @@ export function ServicesPage() {
     queryFn: async () => (await api.get('/service-access-users')).data.data
   });
 
-  const createService = useMutation({
-    mutationFn: async () => api.post('/services', serviceForm),
+  const saveService = useMutation({
+    mutationFn: async () =>
+      editingServiceId
+        ? api.put(`/services/${editingServiceId}`, serviceForm)
+        : api.post('/services', serviceForm),
+
     onSuccess: () => {
-      setMsg('Servicio registrado correctamente');
-      setServiceForm({
-        code: '',
-        name: '',
-        description: '',
-        frontendUrl: '',
-        apiUrl: '',
-        active: 1
-      });
+      setMsg(
+        editingServiceId
+          ? 'Servicio actualizado correctamente'
+          : 'Servicio registrado correctamente'
+      );
+
+      setEditingServiceId(null);
+      setServiceForm(emptyServiceForm);
+
       qc.invalidateQueries({ queryKey: ['services'] });
+      qc.invalidateQueries({ queryKey: ['company-services'] });
+      qc.invalidateQueries({ queryKey: ['company-services-form'] });
+      qc.invalidateQueries({ queryKey: ['companies'] });
     },
+
     onError: (e) => setMsg(getErrorMessage(e))
   });
 
@@ -161,8 +172,15 @@ export function ServicesPage() {
   const serviceAccessUsers = serviceAccessUsersQuery.data || [];
 
   const selectedCompany = useMemo(() => {
-    return companies.find((item: any) => Number(item.id) === Number(accessForm.companyId));
+    return companies.find(
+      (item: any) => Number(item.id) === Number(accessForm.companyId)
+    );
   }, [companies, accessForm.companyId]);
+
+  const cancelServiceEdit = () => {
+    setEditingServiceId(null);
+    setServiceForm(emptyServiceForm);
+  };
 
   return (
     <div className="stack">
@@ -171,7 +189,7 @@ export function ServicesPage() {
         subtitle="Productos contratables, contratos por empresa y usuarios maestro de acceso"
       />
 
-      <Card title="Crear servicio">
+      <Card title={editingServiceId ? 'Editar servicio' : 'Crear servicio'}>
         <div className="grid grid-3">
           <Field label="Código">
             <Input
@@ -182,7 +200,7 @@ export function ServicesPage() {
                   code: e.target.value.toUpperCase()
                 })
               }
-              placeholder="FARMACIA"
+              placeholder="COLEGIO"
             />
           </Field>
 
@@ -192,7 +210,7 @@ export function ServicesPage() {
               onChange={(e: any) =>
                 setServiceForm({ ...serviceForm, name: e.target.value })
               }
-              placeholder="Sistema Farmacia"
+              placeholder="Sistema Colegio"
             />
           </Field>
 
@@ -220,7 +238,7 @@ export function ServicesPage() {
                   frontendUrl: e.target.value
                 })
               }
-              placeholder="https://farmacia-production-66d7.up.railway.app"
+              placeholder="https://colegio-front-production-8897.up.railway.app"
             />
           </Field>
 
@@ -230,7 +248,7 @@ export function ServicesPage() {
               onChange={(e: any) =>
                 setServiceForm({ ...serviceForm, apiUrl: e.target.value })
               }
-              placeholder="https://farmacia-production-66d7.up.railway.app/api"
+              placeholder="https://colegio-api-production.up.railway.app/api"
             />
           </Field>
 
@@ -250,14 +268,117 @@ export function ServicesPage() {
         <div className="actions" style={{ marginTop: 16 }}>
           <button
             className="btn"
-            onClick={() => createService.mutate()}
-            disabled={createService.isPending}
+            onClick={() => saveService.mutate()}
+            disabled={saveService.isPending}
           >
-            Guardar servicio
+            {editingServiceId
+              ? saveService.isPending
+                ? 'Actualizando...'
+                : 'Actualizar servicio'
+              : saveService.isPending
+                ? 'Guardando...'
+                : 'Guardar servicio'}
           </button>
+
+          {editingServiceId ? (
+            <button className="btn secondary" onClick={cancelServiceEdit}>
+              Cancelar
+            </button>
+          ) : null}
         </div>
 
         {msg ? <p className="muted">{msg}</p> : null}
+      </Card>
+
+      <Card title="Listado de servicios">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Código</th>
+                <th>Servicio</th>
+                <th>Frontend URL</th>
+                <th>API URL</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {services.map((s: any) => (
+                <tr key={s.id}>
+                  <td>{s.id}</td>
+
+                  <td>
+                    <strong>{s.code}</strong>
+                  </td>
+
+                  <td>
+                    <strong>{s.name}</strong>
+                    <div className="muted">{s.description || '-'}</div>
+                  </td>
+
+                  <td>
+                    <span className="muted">{s.frontend_url || '-'}</span>
+                  </td>
+
+                  <td>
+                    <span className="muted">{s.api_url || '-'}</span>
+                  </td>
+
+                  <td>
+                    <span
+                      className={`badge ${
+                        Number(s.active) === 1 ? 'ok' : 'off'
+                      }`}
+                    >
+                      {Number(s.active) === 1 ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button
+                      className="btn secondary"
+                      onClick={() => {
+                        setEditingServiceId(s.id);
+
+                        setServiceForm({
+                          code: s.code || '',
+                          name: s.name || '',
+                          description: s.description || '',
+                          frontendUrl: s.frontend_url || '',
+                          apiUrl: s.api_url || '',
+                          active: Number(s.active) === 1 ? 1 : 0
+                        });
+
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {!servicesQuery.isLoading && !services.length ? (
+                <tr>
+                  <td colSpan={7} className="muted">
+                    No hay servicios registrados.
+                  </td>
+                </tr>
+              ) : null}
+
+              {servicesQuery.isLoading ? (
+                <tr>
+                  <td colSpan={7} className="muted">
+                    Cargando servicios...
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       <Card title="Asignar servicio a empresa">
